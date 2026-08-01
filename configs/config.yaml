@@ -1,0 +1,64 @@
+# =====================================================
+# Project Configuration
+# =====================================================
+
+project:
+  name: Predictive-Maintenance-RUL
+  random_seed: 42
+
+# =====================================================
+# Paths
+# =====================================================
+
+paths:
+  raw_data: data/raw
+  interim_data: data/interim
+  processed_data: data/processed
+  external_data: data/external
+
+  models: models
+  reports: reports
+  metrics: reports/metrics
+  figures: reports/figures
+  logs: logs
+
+# =====================================================
+# Dataset
+# =====================================================
+
+dataset:
+  num_sensors: 21
+
+  dataset_files:
+    - train_FD001.txt
+    - train_FD002.txt
+    - train_FD003.txt
+    - train_FD004.txt
+
+# =====================================================
+# Feature Engineering
+# =====================================================
+
+feature_engineering:
+  rolling_window: 3
+
+# =====================================================
+# Training
+# =====================================================
+
+training:
+  train_size: 0.8
+  test_size: 0.2
+
+# =====================================================
+# Model
+# =====================================================
+
+model:
+  name: random_forest
+
+random_forest:
+  n_estimators: 200
+  max_depth: 15
+  random_state: 42
+  n_jobs: -1
