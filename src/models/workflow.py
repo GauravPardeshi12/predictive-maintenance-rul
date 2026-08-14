@@ -2,10 +2,14 @@ from __future__ import annotations
 import pandas as pd
 import numpy as np
 from sklearn.base import RegressorMixin
-from src.models.training.linear_regression import train_linear_regression, prepare_scaled_features
+from src.models.training.linear_regression import (
+    train_linear_regression,
+    prepare_scaled_features,
+)
 from src.models.training.random_forest import train_random_forest
-from src.models.evaluate import plot_actual_vs_predicted
-from src.models.evaluate import evaluate_model
+from src.models.training.xgboost import train_xgboost
+from src.models.evaluate import plot_actual_vs_predicted, plot_feature_importance, save_feature_importance
+from src.models.evaluate import evaluate_model, plot_residual_distribution, plot_residuals_vs_predictions
 from src.models.model_io import save_model, save_scaler
 from src.utils.logger import logger
 
@@ -43,17 +47,30 @@ def _finalize_model_pipeline(
         Model evaluation results.
     """
 
-
     logger.info(f"Finalizing {model_name} pipeline.")
 
-    results = evaluate_model(model= model, x_test= x_test, y_test= y_test)
+    results = evaluate_model(model=model, x_test=x_test, y_test=y_test)
 
-    plot_actual_vs_predicted(y_true= y_test, y_pred= results["predictions"], model_name= model_name)
+    plot_actual_vs_predicted(
+        y_true=y_test, y_pred=results["predictions"], model_name=model_name
+    )
 
-    save_model(model= model, model_name= model_name)
+    plot_residual_distribution(
+    y_true=y_test,
+    y_pred= results["predictions"],
+    model_name=model_name,
+)
+
+    plot_residuals_vs_predictions(
+    y_true=y_test,
+    y_pred= results["predictions"],
+    model_name=model_name,
+)
+
+    save_model(model=model, model_name=model_name)
 
     if scaler is not None:
-        save_scaler(scaler= scaler, model_name= model_name)
+        save_scaler(scaler=scaler, model_name=model_name)
 
     logger.info(f"{model_name} pipeline completed.")
 
@@ -70,15 +87,11 @@ def run_linear_regression(
     Execute the complete Linear Regression workflow.
     """
 
-    logger.info(
-        "Running Linear Regression workflow."
-    )
+    logger.info("Running Linear Regression workflow.")
 
-    x_train_scaled, x_test_scaled, scaler = (
-        prepare_scaled_features(
-            x_train=x_train,
-            x_test=x_test,
-        )
+    x_train_scaled, x_test_scaled, scaler = prepare_scaled_features(
+        x_train=x_train,
+        x_test=x_test,
     )
 
     model = train_linear_regression(
@@ -105,20 +118,43 @@ def run_random_forest(
     Execute the complete Random Forest workflow.
     """
 
-    logger.info(
-        "Running Random Forest workflow."
-    )
+    logger.info("Running Random Forest workflow.")
 
     model = train_random_forest(
         x_train=x_train,
         y_train=y_train,
     )
 
-    return _finalize_model_pipeline(
+    results = _finalize_model_pipeline(
         model=model,
         model_name="random_forest",
         x_test=x_test,
         y_test=y_test,
+    )
+
+    importance_df = plot_feature_importance(
+        model=model, feature_names=x_train.columns, model_name="random_forest", top_n=20
+    )
+
+    save_feature_importance(importance_df= importance_df, model_name= "random_forest")
+
+    results["feature_importance"] = importance_df
+    return results
+
+
+def run_xgboost(
+    x_train: pd.DataFrame, x_test: pd.Series, y_train: pd.DataFrame, y_test: pd.Series
+) -> dict:
+    """
+    Execute the complete xgboost Regressor workflow.
+    """
+
+    logger.info("Running xgboost Regressor workflow")
+
+    model = train_xgboost(x_train=x_train, y_train=y_train)
+
+    return _finalize_model_pipeline(
+        model=model, model_name="xgboost", x_test=x_test, y_test=y_test
     )
 
 
@@ -132,9 +168,7 @@ def run_all_models(
     Execute all baseline models.
     """
 
-    logger.info(
-        "Running baseline models."
-    )
+    logger.info("Running baseline models.")
 
     results = {
         "Linear Regression": run_linear_regression(
@@ -149,10 +183,11 @@ def run_all_models(
             y_train,
             y_test,
         ),
+        "XGBoost": run_xgboost(
+            x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test
+        ),
     }
 
-    logger.info(
-        "Baseline models completed."
-    )
+    logger.info("Baseline models completed.")
 
     return results

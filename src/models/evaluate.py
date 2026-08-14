@@ -217,3 +217,309 @@ def plot_actual_vs_predicted(y_true: pd.Series, y_pred: np.ndarray, model_name: 
 
 
     logger.info(f"Actual VS Predicted RUL plot generated for {model_name}")
+
+def plot_feature_importance(model, feature_names, model_name: str, top_n: int = 20) -> pd.DataFrame:
+    """
+    Plot and return the most important features for a tree-based model.
+
+    Parameters
+    ----------
+    model : tree-based regressor
+        Trained model containing feature_importances_.
+
+    feature_names : iterable
+        Names of the model input features.
+
+    model_name : str
+        Name of the trained model.
+
+    top_n : int, default=20
+        Number of top features to display.
+
+    Returns
+    -------
+    pd.DataFrame
+        Feature importance ranked from highest to lowest.
+    """
+
+    logger.info(f"Generating feature importance for {model_name}")
+
+    if not hasattr(model, "feature_importances_"):
+        raise AttributeError(f"{model_name} does not provide feature_importances_.")
+
+    importance_df = pd.DataFrame({"Feature": feature_names,
+                                  "Importance": model.feature_importances_})
+
+    importance_df = importance_df.sort_values(by= "Importance", ascending= False).reset_index(drop= True)
+    top_features = importance_df.head(top_n).sort_values(by= "Importance", ascending= True)
+
+    plt.figure(figsize= (10,8))
+
+    plt.barh(top_features["Feature"], top_features["Importance"])
+
+    plt.title(
+        f"Top {top_n} Feature Importance\n({model_name})",
+        fontsize=16,
+        fontweight="bold",
+    )
+
+    plt.xlabel(
+        "Feature Importance",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.ylabel(
+        "Feature",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.xticks(fontsize=11)
+    plt.yticks(fontsize=10)
+
+    plt.grid(
+        axis="x",
+        alpha=0.3,
+    )
+
+    plt.tight_layout()
+
+    save_figure(
+        figure_name=f"{model_name}_feature_importance",
+        subfolder="feature_importance",
+    )
+
+    plt.show()
+    plt.close()
+
+    logger.info(
+        f"Feature importance plot generated for {model_name}."
+    )
+
+    return importance_df
+
+
+def save_feature_importance(
+    importance_df: pd.DataFrame,
+    model_name: str,
+) -> Path:
+    """
+    Save feature importance results as a CSV report.
+
+    Parameters
+    ----------
+    importance_df : pd.DataFrame
+        Feature importance DataFrame.
+
+    model_name : str
+        Name of the model.
+
+    Returns
+    -------
+    Path
+        Path to the saved feature importance report.
+    """
+
+    logger.info(
+        f"Saving feature importance report for {model_name}."
+    )
+
+    metrics_dir = Path(
+        config["paths"]["metrics"]
+    )
+
+    metrics_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    file_name = (
+        f"{model_name.lower().replace(' ', '_')}"
+        "_feature_importance.csv"
+    )
+
+    report_path = metrics_dir / file_name
+
+    importance_df.to_csv(
+        report_path,
+        index=False,
+    )
+
+    logger.info(
+        f"Feature importance report saved to {report_path}."
+    )
+
+    return report_path
+
+
+def calculate_residuals(y_true: pd.Series, y_pred: np.ndarray) ->np.ndarray:
+    """
+    Calculate prediction residuals.
+
+    Residual = Actual RUL - Predicted RUL.
+    """
+
+    logger.info("Calculating prediction residuals.")
+
+    residuals = np.asarray(y_true) - np.asarray(y_pred)
+
+    logger.info("Prediction residuals calculated.")
+    return residuals
+
+
+def plot_residual_distribution(
+    y_true: pd.Series,
+    y_pred: np.ndarray,
+    model_name: str,
+) -> None:
+    """
+    Plot the distribution of model residuals.
+
+    Residual = Actual RUL - Predicted RUL.
+    """
+
+    logger.info(
+        f"Generating residual distribution for {model_name}."
+    )
+
+    residuals = calculate_residuals(
+        y_true=y_true,
+        y_pred=y_pred,
+    )
+
+    plt.figure(figsize=(10, 6))
+
+    plt.hist(
+        residuals,
+        bins=40,
+        alpha=0.7,
+    )
+
+    plt.axvline(
+        x=0,
+        linestyle="--",
+        linewidth=2,
+        color="red",
+        label="Zero Error",
+    )
+
+    plt.title(
+        f"Residual Distribution\n({model_name})",
+        fontsize=16,
+        fontweight="bold",
+    )
+
+    plt.xlabel(
+        "Residual (Actual - Predicted)",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.ylabel(
+        "Frequency",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.xticks(fontsize=11)
+    plt.yticks(fontsize=11)
+
+    plt.grid(
+        axis="y",
+        alpha=0.3,
+    )
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    save_figure(
+        figure_name=f"{model_name}_residual_distribution",
+        subfolder="residuals",
+    )
+
+    plt.show()
+    plt.close()
+
+    logger.info(
+        f"Residual distribution generated for {model_name}."
+    )
+
+
+def plot_residuals_vs_predictions(
+    y_true: pd.Series,
+    y_pred: np.ndarray,
+    model_name: str,
+) -> None:
+    """
+    Plot residuals against predicted RUL values.
+    """
+
+    logger.info(
+        f"Generating residual vs prediction plot for {model_name}."
+    )
+
+    residuals = calculate_residuals(
+        y_true=y_true,
+        y_pred=y_pred,
+    )
+
+    plt.figure(figsize=(10, 6))
+
+    plt.scatter(
+        y_pred,
+        residuals,
+        alpha=0.4,
+        s=12,
+    )
+
+    plt.axhline(
+        y=0,
+        linestyle="--",
+        linewidth=2,
+        color="red",
+        label="Zero Error",
+    )
+
+    plt.title(
+        f"Residuals vs Predicted RUL\n({model_name})",
+        fontsize=16,
+        fontweight="bold",
+    )
+
+    plt.xlabel(
+        "Predicted RUL",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.ylabel(
+        "Residual (Actual - Predicted)",
+        fontsize=13,
+        fontweight="bold",
+    )
+
+    plt.xticks(fontsize=11)
+    plt.yticks(fontsize=11)
+
+    plt.grid(alpha=0.3)
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    save_figure(
+        figure_name=f"{model_name}_residuals_vs_predictions",
+        subfolder="residuals",
+    )
+
+    plt.show()
+    plt.close()
+
+    logger.info(
+        f"Residual vs prediction plot generated for {model_name}."
+    )
+
+
+

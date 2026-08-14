@@ -3,7 +3,7 @@ import pandas as pd
 from src.utils.logger import logger
 from sklearn.model_selection import train_test_split
 
-IDENTIFIER_COLUMNS = ["unit_id", "dataset_id", "engine_id", "operating_condition"]
+EXCLUDED_COLUMNS = ["unit_id", "dataset_id", "engine_id", "operating_condition", "cycle"]
 
 
 def create_engine_identifier(df: pd.DataFrame) -> pd.DataFrame:
@@ -176,8 +176,9 @@ def remove_identifier_columns(
 
     logger.info("Removing identifier columns")
 
+
     existing_columns = [
-        column for column in IDENTIFIER_COLUMNS if column in x_train.columns
+        column for column in EXCLUDED_COLUMNS if column in x_train.columns
     ]
 
     x_train = x_train.drop(columns= existing_columns)
@@ -228,10 +229,12 @@ def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame,
 
     x_train, x_test, y_train, y_test = split_by_engine(x= x, y= y)
 
+    train_groups = x_train["engine_id"].copy()
+
     x_train, x_test = remove_identifier_columns(x_train= x_train, x_test= x_test)
 
     logger.info("=" * 70)
     logger.info("Preprocessing pipeline completed successfully.")
     logger.info("=" * 70)
 
-    return (x_train, x_test, y_train, y_test)
+    return (x_train, x_test, y_train, y_test, train_groups)

@@ -13,7 +13,7 @@ def main():
 
     run_eda(df)
 
-    x_train, x_test, y_train, y_test = prepare_training_data(df)
+    x_train, x_test, y_train, y_test, train_groups = prepare_training_data(df)
 
     results = run_all_models(
         x_train,
