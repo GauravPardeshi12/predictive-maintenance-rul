@@ -8,6 +8,9 @@ from src.models.training.linear_regression import (
 )
 from src.models.training.random_forest import train_random_forest
 from src.models.training.xgboost import train_xgboost
+from src.models.training.xgboost_optimized import train_optimized_xgboost
+from src.models.tuning.xgboost_optuna import optimize_xgboost
+
 from src.models.evaluate import plot_actual_vs_predicted, plot_feature_importance, save_feature_importance
 from src.models.evaluate import evaluate_model, plot_residual_distribution, plot_residuals_vs_predictions
 from src.models.model_io import save_model, save_scaler
