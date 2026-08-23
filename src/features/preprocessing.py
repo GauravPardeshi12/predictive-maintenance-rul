@@ -3,7 +3,7 @@ import pandas as pd
 from src.utils.logger import logger
 from sklearn.model_selection import train_test_split
 
-EXCLUDED_COLUMNS = ["unit_id", "dataset_id", "engine_id", "operating_condition", "cycle"]
+IDENTIFIER_COLUMNS = ["unit_id", "dataset_id", "engine_id", "operating_condition"]
 
 
 def create_engine_identifier(df: pd.DataFrame) -> pd.DataFrame:
@@ -31,7 +31,7 @@ def create_engine_identifier(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def select_features_and_target(df: pd.Dataframe) -> tuple[pd.DataFrame, pd.Series]:
+def select_features_and_target(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     """
     Split the dataset into features and target.
 
@@ -105,7 +105,7 @@ def split_by_engine(
     for dataset in datasets:
         logger.info(f"Processing dataset {dataset}")
         dataset_x = x[x["dataset_id"] == dataset]
-        engine_ids = x["engine_id"].unique()
+        engine_ids = dataset_x["engine_id"].unique()
         train_engines, test_engines = train_test_split(
             engine_ids, test_size=test_size, random_state=random_state, shuffle=True
         )
@@ -155,38 +155,53 @@ def split_by_engine(
 
 
 def remove_identifier_columns(
-    x_train: pd.DataFrame, x_test: pd.DataFrame
+    x_train: pd.DataFrame,
+    x_test: pd.DataFrame,
+    include_cycle: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Remove identifier columns from the training and testing feature matrices.
+    Remove identifier columns from the training and testing
+    feature matrices.
 
     Parameters
     ----------
-    X_train : pd.DataFrame
+    x_train : pd.DataFrame
         Training feature matrix.
 
-    X_test : pd.DataFrame
+    x_test : pd.DataFrame
         Testing feature matrix.
+
+    include_cycle : bool, default=False
+        Whether to keep the cycle feature.
 
     Returns
     -------
     tuple
-        X_train and X_test without identifier columns.
+        X_train and X_test after removing unwanted columns.
     """
 
-    logger.info("Removing identifier columns")
+    logger.info("Removing identifier columns.")
 
-
-    existing_columns = [
-        column for column in EXCLUDED_COLUMNS if column in x_train.columns
+    columns_to_remove = [
+        column
+        for column in IDENTIFIER_COLUMNS
+        if column in x_train.columns
     ]
 
-    x_train = x_train.drop(columns= existing_columns)
-    x_test = x_test.drop(columns= existing_columns)
+    if not include_cycle and "cycle" in x_train.columns:
+        columns_to_remove.append("cycle")
+
+    x_train = x_train.drop(
+        columns=columns_to_remove
+    )
+
+    x_test = x_test.drop(
+        columns=columns_to_remove
+    )
 
     logger.info(
-        f"Removed {len(existing_columns)} identifier column(s): "
-        f"{', '.join(existing_columns)}"
+        f"Removed {len(columns_to_remove)} column(s): "
+        f"{', '.join(columns_to_remove)}"
     )
 
     logger.info(
@@ -203,38 +218,66 @@ def remove_identifier_columns(
     )
 
 
-def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+def prepare_training_data(
+    df: pd.DataFrame,
+    include_cycle: bool = False,
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.Series,
+    pd.Series,
+    pd.Series,
+]:
     """
-    Execute the complete preprocessing pipeline for
-    model training.
+    Execute the complete preprocessing pipeline for model training.
 
     Parameters
     ----------
     df : pd.DataFrame
         Feature engineered dataset.
 
+    include_cycle : bool, default=False
+        Whether to keep cycle as a model feature.
+
     Returns
     -------
     tuple
-        X_train, X_test, y_train, y_test
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        train_groups
     """
 
-    logger.info("=" * 70)   
+    logger.info("=" * 70)
     logger.info("Starting preprocessing pipeline.")
     logger.info("=" * 70)
 
     df = create_engine_identifier(df)
 
-    x,y = select_features_and_target(df)
+    x, y = select_features_and_target(df)
 
-    x_train, x_test, y_train, y_test = split_by_engine(x= x, y= y)
+    x_train, x_test, y_train, y_test = split_by_engine(
+        x=x,
+        y=y,
+    )
 
     train_groups = x_train["engine_id"].copy()
 
-    x_train, x_test = remove_identifier_columns(x_train= x_train, x_test= x_test)
+    x_train, x_test = remove_identifier_columns(
+        x_train=x_train,
+        x_test=x_test,
+        include_cycle=include_cycle,
+    )
 
     logger.info("=" * 70)
     logger.info("Preprocessing pipeline completed successfully.")
     logger.info("=" * 70)
 
-    return (x_train, x_test, y_train, y_test, train_groups)
+    return (
+        x_train,
+        x_test,
+        y_train,
+        y_test,
+        train_groups,
+    )

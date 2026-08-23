@@ -160,37 +160,72 @@ def run_xgboost(
         model=model, model_name="xgboost", x_test=x_test, y_test=y_test
     )
 
+def run_optimized_xgboost(
+    x_train: pd.DataFrame,
+    x_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
+    train_groups: pd.Series,
+) -> dict:
+
+    logger.info("Running optimized XGBoost workflow.")
+
+    tuning_results = optimize_xgboost(x_train= x_train, y_train= y_train, groups= train_groups, n_trials= 30)
+    best_params = tuning_results["best_params"]
+    logger.info(f"Best XGBoost parameter {best_params}")
+
+    model = train_optimized_xgboost(x_train= x_train, y_train= y_train, best_params= best_params)
+
+    results = _finalize_model_pipeline(model= model, model_name= "optimized_xgboost", x_test= x_test, y_test= y_test)
+
+    results["best_params"] = best_params
+    results["best_rmse"] = tuning_results["best_rmse"]
+
+    return results
+
 
 def run_all_models(
     x_train: pd.DataFrame,
     x_test: pd.DataFrame,
     y_train: pd.Series,
     y_test: pd.Series,
+    train_groups: pd.Series,
+    include_optimized_xgboost: bool = False,
 ) -> dict:
-    """
-    Execute all baseline models.
-    """
 
     logger.info("Running baseline models.")
 
     results = {
         "Linear Regression": run_linear_regression(
-            x_train,
-            x_test,
-            y_train,
-            y_test,
+            x_train=x_train,
+            x_test=x_test,
+            y_train=y_train,
+            y_test=y_test,
         ),
+
         "Random Forest": run_random_forest(
-            x_train,
-            x_test,
-            y_train,
-            y_test,
+            x_train=x_train,
+            x_test=x_test,
+            y_train=y_train,
+            y_test=y_test,
         ),
+
         "XGBoost": run_xgboost(
-            x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test
+            x_train=x_train,
+            x_test=x_test,
+            y_train=y_train,
+            y_test=y_test,
         ),
     }
 
-    logger.info("Baseline models completed.")
+    if include_optimized_xgboost:
+
+        results["Optimized XGBoost"] = run_optimized_xgboost(
+            x_train=x_train,
+            x_test=x_test,
+            y_train=y_train,
+            y_test=y_test,
+            train_groups=train_groups,
+        )
 
     return results
