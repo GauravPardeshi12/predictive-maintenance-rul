@@ -176,6 +176,17 @@ def run_optimized_xgboost(
 
     model = train_optimized_xgboost(x_train= x_train, y_train= y_train, best_params= best_params)
 
+    importance_df = plot_feature_importance(
+    model=model,
+    feature_names=x_train.columns,
+    model_name="optimized_xgboost",
+    top_n=20,
+)
+    save_feature_importance(
+    importance_df=importance_df,
+    model_name="optimized_xgboost",
+)
+
     results = _finalize_model_pipeline(model= model, model_name= "optimized_xgboost", x_test= x_test, y_test= y_test)
 
     results["best_params"] = best_params
