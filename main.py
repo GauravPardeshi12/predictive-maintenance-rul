@@ -1,12 +1,70 @@
 import matplotlib
+
 matplotlib.use("Agg")
+
 from src.data.ingestion import load_training_data
 from src.features.feature_engineering import prepare_training_df
 from src.visualization.eda import run_eda
-from src.models.workflow import run_all_models
 from src.features.preprocessing import prepare_training_data
-from src.models.evaluate import compare_models, print_model_comparison, save_model_comparison
-from src.models.tuning.xgboost_optuna import optimize_xgboost
+from src.models.workflow import run_all_models
+from src.models.evaluate import (
+    compare_models,
+    print_model_comparison,
+    save_model_comparison,
+)
+from src.models.ablation import (
+    create_ablation_report,
+    save_ablation_report,
+    plot_ablation_comparison,
+)
+
+
+def run_experiment(
+    df,
+    include_cycle: bool,
+) -> dict:
+
+    experiment_name = (
+        "With Cycle"
+        if include_cycle
+        else "Without Cycle"
+    )
+
+    print("\n" + "=" * 70)
+    print(f"RUNNING EXPERIMENT: {experiment_name}")
+    print("=" * 70)
+
+    (
+        x_train,
+        x_test,
+        y_train,
+        y_test,
+        train_groups,
+    ) = prepare_training_data(
+        df=df,
+        include_cycle=include_cycle,
+    )
+
+    results = run_all_models(
+        x_train=x_train,
+        x_test=x_test,
+        y_train=y_train,
+        y_test=y_test,
+        train_groups=train_groups,
+        include_optimized_xgboost=False,
+    )
+
+    comparison_df = compare_models(
+        results=results
+    )
+
+    print_model_comparison(
+        comparison_df=comparison_df
+    )
+
+    return results
+
+
 def main():
 
     df = load_training_data()
@@ -15,22 +73,29 @@ def main():
 
     run_eda(df)
 
-    x_train, x_test, y_train, y_test, train_groups = prepare_training_data(df)
-
-    results = run_all_models(
-        x_train,
-        x_test,
-        y_train,
-        y_test,
-        train_groups
+    results_with_cycle = run_experiment(
+        df=df,
+        include_cycle=True,
     )
 
-    comparison_df = compare_models(results= results)
+    results_without_cycle = run_experiment(
+        df=df,
+        include_cycle=False,
+    )
 
-    print_model_comparison(comparison_df= comparison_df)
+    ablation_df = create_ablation_report(
+        results_with_cycle=results_with_cycle,
+        results_without_cycle=results_without_cycle,
+    )
 
-    save_model_comparison(comparison_df)
-    
+    save_ablation_report(
+        ablation_df=ablation_df
+    )
+
+    plot_ablation_comparison(
+        ablation_df=ablation_df
+    )
+
 
 if __name__ == "__main__":
     main()

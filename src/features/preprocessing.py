@@ -59,43 +59,39 @@ def select_features_and_target(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Serie
 
 
 def split_by_engine(
-    x: pd.DataFrame, y: pd.Series, test_size: float = 0.2, random_state: int = 42
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-    """
-    Split the dataset by engine while preserving the
-    proportion of engines from each NASA CMAPSS dataset.
+    x: pd.DataFrame,
+    y: pd.Series,
+    test_size: float = 0.2,
+    random_state: int = 42,
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.Series,
+    pd.Series,
+]:
 
-    Parameters
-    ----------
-    x : pd.DataFrame
-        Feature matrix.
+    logger.info(
+        "Performing dataset-stratified engine-wise train/test split."
+    )
 
-    y : pd.Series
-        Target vector.
+    required_columns = {
+        "dataset_id",
+        "engine_id",
+    }
 
-    test_size : float, default=0.2
-        Fraction of engines used for testing.
-
-    random_state : int, default=42
-        Random seed.
-
-    Returns
-    -------
-    x_train, x_test, y_train, y_test
-    """
-
-    logger.info("Performing stratified engine wise train/test split")
-
-    required_columns = {"dataset_id", "unit_id"}
     missing = required_columns - set(x.columns)
 
     if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
+        raise ValueError(
+            f"Missing required columns: {sorted(missing)}"
+        )
 
     train_indices = []
     test_indices = []
 
-    datasets = x["dataset_id"].unique()
+    datasets = sorted(
+        x["dataset_id"].unique()
+    )
 
     print("\n")
     print("=" * 70)
@@ -103,46 +99,96 @@ def split_by_engine(
     print("=" * 70)
 
     for dataset in datasets:
-        logger.info(f"Processing dataset {dataset}")
-        dataset_x = x[x["dataset_id"] == dataset]
-        engine_ids = dataset_x["engine_id"].unique()
-        train_engines, test_engines = train_test_split(
-            engine_ids, test_size=test_size, random_state=random_state, shuffle=True
+
+        logger.info(
+            f"Processing dataset {dataset}"
         )
-        train_idx = dataset_x[dataset_x["engine_id"].isin(train_engines)].index
-        test_idx = dataset_x[dataset_x["engine_id"].isin(test_engines)].index
-        train_indices.extend(train_idx)
-        test_indices.extend(test_idx)
+
+        dataset_x = x[
+            x["dataset_id"] == dataset
+        ]
+
+        engine_ids = (
+            dataset_x["engine_id"]
+            .drop_duplicates()
+            .to_numpy()
+        )
+
+        train_engines, test_engines = train_test_split(
+            engine_ids,
+            test_size=test_size,
+            random_state=random_state,
+            shuffle=True,
+        )
+
+        train_idx = dataset_x[
+            dataset_x["engine_id"].isin(train_engines)
+        ].index
+
+        test_idx = dataset_x[
+            dataset_x["engine_id"].isin(test_engines)
+        ].index
+
+        train_indices.extend(
+            train_idx.tolist()
+        )
+
+        test_indices.extend(
+            test_idx.tolist()
+        )
 
         print(f"\n{dataset}")
-
         print("-" * 35)
+        print(
+            f"Train Engines : {len(train_engines)}"
+        )
+        print(
+            f"Test Engines  : {len(test_engines)}"
+        )
+        print(
+            f"Train Samples : {len(train_idx):,}"
+        )
+        print(
+            f"Test Samples  : {len(test_idx):,}"
+        )
 
-        print(f"Train Engines : {len(train_engines)}")
+    x_train = x.loc[
+        train_indices
+    ].copy()
 
-        print(f"Test Engines  : {len(test_engines)}")
+    x_test = x.loc[
+        test_indices
+    ].copy()
 
-        print(f"Train Samples : {len(train_idx):,}")
+    y_train = y.loc[
+        train_indices
+    ].copy()
 
-        print(f"Test Samples  : {len(test_idx):,}")
-
-    x_train = x.loc[train_indices].copy()
-
-    x_test = x.loc[test_indices].copy()
-
-    y_train = y.loc[train_indices].copy()
-
-    y_test = y.loc[test_indices].copy()
+    y_test = y.loc[
+        test_indices
+    ].copy()
 
     logger.info("=" * 70)
 
-    logger.info(f"Training Engines : " f"{x_train['engine_id'].nunique()}")
+    logger.info(
+        f"Training Engines : "
+        f"{x_train['engine_id'].nunique()}"
+    )
 
-    logger.info(f"Testing Engines  : " f"{x_test['engine_id'].nunique()}")
+    logger.info(
+        f"Testing Engines : "
+        f"{x_test['engine_id'].nunique()}"
+    )
 
-    logger.info(f"Training Samples : {len(x_train):,}")
+    logger.info(
+        f"Training Samples : "
+        f"{len(x_train):,}"
+    )
 
-    logger.info(f"Testing Samples  : {len(x_test):,}")
+    logger.info(
+        f"Testing Samples : "
+        f"{len(x_test):,}"
+    )
 
     logger.info("=" * 70)
 

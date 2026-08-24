@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from src.utils.config import config
 from src.utils.logger import logger
-from src.utils.plotting import save_figure
+from src.utils.helper import save_figure
 
 def create_ablation_report(
     results_with_cycle: dict,
@@ -52,7 +52,7 @@ def save_ablation_report(ablation_df: pd.DataFrame) -> Path:
     Save the ablation study results to the metrics directory.
     """
 
-    metrics_dir = Path(config["path"]["metrics"])
+    metrics_dir = Path(config["paths"]["metrics"])
 
     metrics_dir.mkdir(parents= True, exist_ok = True)
 
