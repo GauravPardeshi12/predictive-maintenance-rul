@@ -190,36 +190,43 @@ def run_all_models(
     y_train: pd.Series,
     y_test: pd.Series,
     train_groups: pd.Series,
-    include_optimized_xgboost: bool = False,
+    models_to_run: list[str] | None = None,
 ) -> dict:
 
-    logger.info("Running baseline models.")
+    if models_to_run is None:
+        models_to_run = [
+            "linear_regression",
+            "random_forest",
+            "xgboost",
+        ]
 
-    results = {
-        "Linear Regression": run_linear_regression(
+    results = {}
+
+    if "linear_regression" in models_to_run:
+        results["Linear Regression"] = run_linear_regression(
             x_train=x_train,
             x_test=x_test,
             y_train=y_train,
             y_test=y_test,
-        ),
+        )
 
-        "Random Forest": run_random_forest(
+    if "random_forest" in models_to_run:
+        results["Random Forest"] = run_random_forest(
             x_train=x_train,
             x_test=x_test,
             y_train=y_train,
             y_test=y_test,
-        ),
+        )
 
-        "XGBoost": run_xgboost(
+    if "xgboost" in models_to_run:
+        results["XGBoost"] = run_xgboost(
             x_train=x_train,
             x_test=x_test,
             y_train=y_train,
             y_test=y_test,
-        ),
-    }
+        )
 
-    if include_optimized_xgboost:
-
+    if "optimized_xgboost" in models_to_run:
         results["Optimized XGBoost"] = run_optimized_xgboost(
             x_train=x_train,
             x_test=x_test,

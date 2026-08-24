@@ -22,6 +22,7 @@ from src.models.ablation import (
 def run_experiment(
     df,
     include_cycle: bool,
+    models_to_run: list[str],
 ) -> dict:
 
     experiment_name = (
@@ -51,19 +52,10 @@ def run_experiment(
         y_train=y_train,
         y_test=y_test,
         train_groups=train_groups,
-        include_optimized_xgboost=False,
-    )
-
-    comparison_df = compare_models(
-        results=results
-    )
-
-    print_model_comparison(
-        comparison_df=comparison_df
+        models_to_run=models_to_run,
     )
 
     return results
-
 
 def main():
 
@@ -73,14 +65,22 @@ def main():
 
     run_eda(df)
 
+    baseline_models = [
+        "linear_regression",
+        "random_forest",
+        "xgboost",
+    ]
+
     results_with_cycle = run_experiment(
         df=df,
         include_cycle=True,
+        models_to_run=baseline_models,
     )
 
     results_without_cycle = run_experiment(
         df=df,
         include_cycle=False,
+        models_to_run=baseline_models,
     )
 
     ablation_df = create_ablation_report(
@@ -94,6 +94,27 @@ def main():
 
     plot_ablation_comparison(
         ablation_df=ablation_df
+    )
+
+    optimized_results = run_experiment(
+        df=df,
+        include_cycle=True,
+        models_to_run=[
+            "optimized_xgboost",
+        ],
+    )
+
+    optimized_comparison = compare_models(
+        results=optimized_results
+    )
+
+    print("\n")
+    print("=" * 70)
+    print("OPTIMIZED XGBOOST RESULTS")
+    print("=" * 70)
+
+    print_model_comparison(
+        comparison_df=optimized_comparison
     )
 
 
