@@ -104,19 +104,27 @@ def main():
         ],
     )
 
-    optimized_comparison = compare_models(
-        results=optimized_results
+    final_results = {
+    **results_with_cycle,
+    **optimized_results,
+    }
+
+    final_comparison = compare_models(
+        results=final_results
     )
 
     print("\n")
     print("=" * 70)
-    print("OPTIMIZED XGBOOST RESULTS")
+    print("FINAL MODEL COMPARISON")
     print("=" * 70)
 
     print_model_comparison(
-        comparison_df=optimized_comparison
+        comparison_df=final_comparison
     )
 
+    save_model_comparison(
+        comparison_df=final_comparison
+    )
 
 if __name__ == "__main__":
     main()

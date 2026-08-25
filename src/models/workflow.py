@@ -15,6 +15,11 @@ from src.models.evaluate import plot_actual_vs_predicted, plot_feature_importanc
 from src.models.evaluate import evaluate_model, plot_residual_distribution, plot_residuals_vs_predictions
 from src.models.model_io import save_model, save_scaler
 from src.utils.logger import logger
+from src.models.explainability import (
+    plot_shap_summary,
+    plot_shap_bar,
+    save_shap_importance,
+)
 
 
 def _finalize_model_pipeline(
@@ -188,6 +193,27 @@ def run_optimized_xgboost(
 )
 
     results = _finalize_model_pipeline(model= model, model_name= "optimized_xgboost", x_test= x_test, y_test= y_test)
+
+    shap_data = x_test.sample(
+    n=min(5000, len(x_test)),
+    random_state=42,
+    )
+    plot_shap_summary(
+        model=model,
+        x_data=shap_data,
+        max_display=20,
+    )
+
+    plot_shap_bar(
+        model=model,
+        x_data=shap_data,
+        max_display=20,
+    )
+
+    save_shap_importance(
+        model=model,
+        x_data=shap_data,
+    )
 
     results["best_params"] = best_params
     results["best_rmse"] = tuning_results["best_rmse"]
