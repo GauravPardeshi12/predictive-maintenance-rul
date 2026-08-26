@@ -21,6 +21,7 @@ from src.models.explainability import (
     save_shap_importance,
 )
 
+from src.models.model_io import save_model_parameters
 
 def _finalize_model_pipeline(
     model: RegressorMixin,
@@ -177,6 +178,11 @@ def run_optimized_xgboost(
 
     tuning_results = optimize_xgboost(x_train= x_train, y_train= y_train, groups= train_groups, n_trials= 30)
     best_params = tuning_results["best_params"]
+    
+    save_model_parameters(
+    parameters=best_params,
+    model_name="optimized_xgboost",
+    )
     logger.info(f"Best XGBoost parameter {best_params}")
 
     model = train_optimized_xgboost(x_train= x_train, y_train= y_train, best_params= best_params)
