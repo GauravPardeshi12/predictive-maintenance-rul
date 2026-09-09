@@ -109,6 +109,50 @@ def load_training_data() -> pd.DataFrame:
 
     return combined_df
 
+def load_test_data() -> pd.DataFrame:
+    """
+    Load all NASA CMAPSS test datasets.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined test dataset without RUL values.
+    """
+
+    logger.info("Loading all test datasets.")
+
+    dataset_files = sorted(
+        RAW_DATA_DIR.glob("test_*.txt")
+    )
+
+    if not dataset_files:
+        logger.error("No test datasets found.")
+        raise FileNotFoundError(
+            f"No test datasets found in {RAW_DATA_DIR}"
+        )
+
+    datasets = []
+
+    for file_path in dataset_files:
+        dataset = load_single_dataset(file_path)
+        datasets.append(dataset)
+
+    combined_df = pd.concat(
+        datasets,
+        ignore_index=True,
+    )
+
+    logger.info(
+        f"Successfully combined {len(datasets)} test datasets."
+    )
+
+    logger.info(
+        f"Final test dataset shape: {combined_df.shape}"
+    )
+
+    return combined_df
+
+
 def main() -> None:
     """
     Run the data ingestion pipeline.

@@ -4,22 +4,19 @@ import pandas as pd
 
 from src.features.feature_engineering import (
     remove_constant_columns,
-    create_operating_condition_labels,
-    create_lag_features,
-    create_rolling_features,
+    create_operating_condition,
+    add_lag_features,
+    add_rolling_features,
 )
 from src.utils.logger import logger
 
 
-def prepare_inference_data(
+def prepare_inference_df(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Prepare raw engine data for RUL prediction.
-
-    The same feature engineering steps used during
-    training are applied, except RUL calculation is
-    not performed because RUL is the prediction target.
+    Prepare raw engine data for RUL prediction using
+    the same feature engineering steps used in training.
     """
 
     logger.info(
@@ -30,15 +27,28 @@ def prepare_inference_data(
 
     df = remove_constant_columns(df)
 
-    df = create_operating_condition_labels(df)
+    df = create_operating_condition(df)
 
-    df = create_lag_features(df)
+    df = add_lag_features(df)
 
-    df = create_rolling_features(df)
+    df = add_rolling_features(df)
+
+    rows_before = len(df)
+
+    df = df.dropna().reset_index(drop=True)
+
+    rows_removed = rows_before - len(df)
 
     logger.info(
-        f"Inference feature engineering completed. "
-        f"Final shape: {df.shape}"
+        f"Removed {rows_removed:,} rows with missing values."
+    )
+
+    logger.info(
+        f"Final inference dataset shape: {df.shape}"
+    )
+
+    logger.info(
+        "Inference feature engineering completed successfully."
     )
 
     return df
