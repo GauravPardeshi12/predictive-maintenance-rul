@@ -1,273 +1,387 @@
-<p align="center">
+# Predictive Maintenance — Remaining Useful Life Prediction
 
-# ✈️ Predictive Maintenance using Machine Learning
+An end-to-end machine learning project for predicting the **Remaining Useful Life (RUL)** of turbofan engines using NASA CMAPSS sensor data.
 
-### Predicting Remaining Useful Life (RUL) of Aircraft Engines using NASA CMAPSS Dataset
-
-</p>
-
-<p align="center">
-
-<!-- Replace after generating the final banner -->
-
-<img src="assets/banner.png" width="100%">
-
-</p>
-
-<p align="center">
-
-![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
-![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-orange?logo=scikitlearn)
-![Pandas](https://img.shields.io/badge/Pandas-Data%20Analysis-150458?logo=pandas)
-![NumPy](https://img.shields.io/badge/NumPy-Scientific%20Computing-013243?logo=numpy)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-Visualization-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-
-</p>
+The project covers the complete workflow: data ingestion, time-series feature engineering, engine-wise validation, model comparison, XGBoost tuning, model interpretation, unseen-test evaluation, and an interactive Streamlit dashboard.
 
 ---
 
-# 🚀 Project Highlights
+## Project Overview
 
-- End-to-End Machine Learning Pipeline
-- Professional Modular Architecture
-- Advanced Feature Engineering
-- Engine-wise Train/Test Split (No Data Leakage)
-- Automated Reporting & Visualization
-- Baseline Models: Linear Regression & Random Forest
-- Easily Extendable to Gradient Boosting Models
+Predictive maintenance aims to estimate how much useful operating life remains before equipment requires maintenance.
 
----
+In this project, each engine is observed over multiple operating cycles. Sensor readings and operating conditions are used to estimate its remaining cycles before failure.
 
-# 📌 Project Overview
+### Pipeline
 
-This project implements an end-to-end Machine Learning pipeline to predict the **Remaining Useful Life (RUL)** of aircraft engines using the **NASA CMAPSS turbofan engine dataset**.
-
-The repository focuses not only on building accurate predictive models but also on following production-inspired software engineering practices including modular architecture, reusable workflows, automated evaluation, and reproducible experimentation.
-
----
-
-# 🏗️ Project Architecture
-
-<p align="center">
-
-<img src="assets/project_pipeline.png" width="95%">
-
-</p>
+```mermaid
+flowchart LR
+    A[NASA CMAPSS Data] --> B[Data Ingestion]
+    B --> C[RUL Target Creation]
+    C --> D[Time-Series Features]
+    D --> E[Engine-wise Split]
+    E --> F[Model Comparison]
+    F --> G[Optuna XGBoost Tuning]
+    G --> H[Final Model]
+    H --> I[Unseen Test Evaluation]
+    H --> J[SHAP Analysis]
+    H --> K[Streamlit Dashboard]
+```
 
 ---
 
-# ⚙️ Machine Learning Pipeline
+## Results
 
-| Stage | Status |
-|---------------------------|:------:|
-| Data Ingestion | ✅ |
-| RUL Calculation | ✅ |
-| Feature Engineering | ✅ |
-| Exploratory Data Analysis | ✅ |
-| Engine-wise Train/Test Split | ✅ |
-| Data Preprocessing | ✅ |
-| Linear Regression | ✅ |
-| Random Forest | ✅ |
-| XGBoost | 🚧 |
-| LightGBM | 🚧 |
-| CatBoost | 🚧 |
-| Hyperparameter Tuning | 🚧 |
-| SHAP Explainability | 🚧 |
-| Streamlit Dashboard | 🚧 |
+The final model is an **optimized XGBoost regressor**.
+
+### NASA unseen test set
+
+| Metric | Result |
+|---|---:|
+| Engines evaluated | **707** |
+| MAE | **18.79 cycles** |
+| RMSE | **26.06 cycles** |
+| R² | **0.740** |
+
+Dataset-level performance:
+
+| Dataset | MAE | RMSE | R² |
+|---|---:|---:|---:|
+| FD001 | 13.34 | 17.81 | 0.816 |
+| FD002 | 19.52 | 27.27 | 0.743 |
+| FD003 | 13.61 | 18.34 | 0.804 |
+| FD004 | 22.31 | 29.93 | 0.699 |
+
+The NASA test evaluation uses the **last observed cycle of each test engine**, matching the structure of the supplied NASA RUL labels.
+
+> **Note:** The RUL cap of 125 cycles was selected after benchmark experimentation involving the public CMAPSS test labels. This is documented as a methodological limitation in `Engineering_Decision.md`. A stricter experiment would select the cap using training/validation data only and use the official test set once for the final evaluation.
 
 ---
 
-# 📂 Project Structure
+## What I Built
+
+### 1. Data pipeline
+
+- Loads all four CMAPSS training datasets.
+- Creates an engine identifier from dataset and unit IDs.
+- Calculates training RUL from the maximum observed engine cycle.
+- Keeps the data grouped by engine throughout temporal feature engineering.
+
+### 2. Feature engineering
+
+The final model uses:
+
+- Current operating cycle
+- One-cycle sensor lag features
+- Three-cycle rolling sensor means
+- Operating-condition information
+
+Lag and rolling features are calculated within each engine so that information does not cross engine boundaries.
+
+### 3. Model development
+
+I compared:
+
+- Linear Regression
+- Random Forest
+- XGBoost
+- Optimized XGBoost
+
+Optuna was used to search the main XGBoost hyperparameters.
+
+### 4. Model interpretation
+
+Two approaches are included:
+
+- XGBoost feature importance
+- SHAP feature importance
+
+The analysis shows that `cycle` is the strongest feature, followed by several sensor measurements and their lagged versions.
+
+### 5. Unseen-test evaluation
+
+The final model is evaluated against the separate NASA test observations and RUL files.
+
+The evaluation includes:
+
+- MAE
+- RMSE
+- R²
+- Actual vs predicted plots
+- Residual analysis
+- Dataset-level performance
+- Worst prediction analysis
+
+### 6. Interactive dashboard
+
+The Streamlit dashboard provides:
+
+- Fleet-level RUL overview
+- Engine health distribution
+- Engines requiring attention
+- Individual engine exploration
+- RUL trend visualization
+- Dataset-level comparison
+- Model performance information
+
+The dashboard classifies predicted RUL into:
+
+| Predicted RUL | Status |
+|---|---|
+| ≤ 30 cycles | Critical |
+| 31–60 cycles | Warning |
+| > 60 cycles | Healthy |
+
+These are **decision-support thresholds for the dashboard**, not calibrated probabilities of failure.
+
+---
+
+## Why Engine-wise Splitting?
+
+This is one of the most important parts of the project.
+
+A random row-level split could place observations from the same engine into both training and validation sets. Since each engine produces many sequential observations, this could make the evaluation overly optimistic.
+
+Instead, the project keeps all observations from an engine in the same split.
 
 ```text
-predictive_maintenance_rul/
+Engine A ───────────────→ Train
 
+Engine B ───────────────→ Train
+
+Engine C ───────────────→ Validation
+
+Engine D ───────────────→ Validation
+```
+
+This gives a more realistic estimate of performance on previously unseen engines.
+
+---
+
+## Why Keep `cycle`?
+
+`cycle` is strongly related to engine age, so it was tested explicitly.
+
+An ablation experiment showed that removing it reduced model performance. Since the current operating cycle is available when making a prediction, it was retained as an input feature.
+
+It is treated as an **age-related feature**, not as a direct measurement of engine health.
+
+---
+
+## Project Structure
+
+```text
+predictive_maintenance_RUL/
+│
 ├── configs/
+│   └── config.yaml
+│
 ├── dashboard/
+│   └── app.py
+│
 ├── data/
-├── models/
+│   └── raw/                 # CMAPSS data (not tracked by Git)
+│
+├── models/                  # Generated model files (not tracked by Git)
+│
+├── notebooks/
+│   └── nb.ipynb
+│
 ├── reports/
+│   ├── metrics/
 │   ├── figures/
-│   └── metrics/
+│   └── predictions/
+│
 ├── src/
 │   ├── data/
 │   ├── features/
+│   ├── inference/
 │   ├── models/
 │   ├── utils/
 │   └── visualization/
+│
 ├── tests/
+│
+├── .gitignore
+├── Engineering_Decision.md
+├── LICENSE
 ├── main.py
-├── README.md
 └── requirements.txt
 ```
 
 ---
 
-# 📊 Dataset
+## Setup
 
-The project uses the **NASA CMAPSS (Commercial Modular Aero-Propulsion System Simulation)** dataset.
-
-Supported datasets
-
-- FD001
-- FD002
-- FD003
-- FD004
-
-Each dataset contains
-
-- Operational Settings
-- Sensor Measurements
-- Engine Cycles
-- Remaining Useful Life (RUL)
-
----
-
-# 🤖 Models
-
-| Model | Status |
-|-----------------------|:------:|
-| Linear Regression | ✅ |
-| Random Forest Regressor | ✅ |
-| XGBoost | 🚧 |
-| LightGBM | 🚧 |
-| CatBoost | 🚧 |
-
----
-
-# 📈 Current Results
-
-| Model | MAE ↓ | RMSE ↓ | R² ↑ |
-|----------------------|---------:|---------:|---------:|
-| Random Forest | **29.950** | **42.339** | **0.701** |
-| Linear Regression | 36.711 | 47.331 | 0.626 |
-
-🏆 **Current Best Model : Random Forest Regressor**
-
----
-
-# 📸 Sample Results
-
-<p align="center">
-
-<img src="assets/results_preview.png" width="90%">
-
-</p>
-
-The project automatically generates
-
-- Feature Consistency Heatmap
-- Sensor Trend Analysis
-- Correlation Analysis
-- Actual vs Predicted Plots
-- Model Comparison Reports
-
----
-
-# 💡 Engineering Decisions
-
-Some important engineering choices made during development
-
-- Engine-wise Train/Test Split to eliminate data leakage.
-- Removed identifier columns before training.
-- Scaling applied only where required.
-- Configuration-driven architecture using YAML.
-- Modular pipeline for maintainability.
-- Automatic report generation.
-- Reusable workflow architecture for every ML model.
-
----
-
-# 🛠️ Tech Stack
-
-### Programming
-
-- Python
-
-### Machine Learning
-
-- Scikit-Learn
-
-### Data Processing
-
-- Pandas
-- NumPy
-
-### Visualization
-
-- Matplotlib
-
-### Utilities
-
-- Joblib
-- YAML
-
----
-
-# 🚀 Getting Started
-
-Clone repository
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/predictive-maintenance-rul.git
+git clone <your-repository-url>
+cd predictive_maintenance_RUL
 ```
 
-Move into project
+### 2. Create a virtual environment
+
+Windows:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+macOS / Linux:
 
 ```bash
-cd predictive-maintenance-rul
+python3 -m venv .venv
+source .venv/bin/activate
 ```
 
-Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run
+### 4. Add the NASA CMAPSS data
+
+Place the training, test and RUL files inside:
+
+```text
+data/raw/
+```
+
+Expected files:
+
+```text
+train_FD001.txt
+train_FD002.txt
+train_FD003.txt
+train_FD004.txt
+
+test_FD001.txt
+test_FD002.txt
+test_FD003.txt
+test_FD004.txt
+
+RUL_FD001.txt
+RUL_FD002.txt
+RUL_FD003.txt
+RUL_FD004.txt
+```
+
+The raw dataset is intentionally excluded from Git.
+
+---
+
+## Run the Project
+
+Run the complete machine learning pipeline from the project root:
 
 ```bash
 python main.py
 ```
 
----
+This runs the main training, evaluation and inference workflow and generates the required model and report artifacts.
 
-# 🔮 Future Improvements
+### Run tests
 
-- XGBoost
-- LightGBM
-- CatBoost
-- Hyperparameter Optimization (Optuna)
-- SHAP Explainability
-- MLflow Experiment Tracking
-- Interactive Streamlit Dashboard
-- Docker Deployment
+```bash
+pytest
+```
 
----
+### Launch the dashboard
 
-# 👨‍💻 Author
-
-**Gaurav Pardeshi**
-
-GitHub
-
-https://github.com/<your-username>
-
-LinkedIn
-
-https://linkedin.com/in/<your-profile>
+```bash
+streamlit run dashboard/app.py
+```
 
 ---
 
-# 📄 License
+## Configuration
 
-This project is licensed under the MIT License.
+Project settings are centralized in:
+
+```text
+configs/config.yaml
+```
+
+This includes:
+
+- Project random seed
+- Data/model/report paths
+- Feature-engineering settings
+- RUL cap
+- Optuna trial count
+- XGBoost parameters
+- Dashboard risk thresholds
+
+Keeping these values outside the implementation makes the pipeline easier to reproduce and modify.
 
 ---
 
-<p align="center">
+## Key Engineering Decisions
 
-⭐ If you found this project interesting, consider giving it a Star!
+A detailed explanation of the main modelling decisions is available in:
 
-</p>
+```text
+Engineering_Decision.md
+```
+
+Important decisions include:
+
+- Engine-wise data splitting
+- Keeping the cycle feature
+- Engine-level lag and rolling features
+- No scaling for tree-based models
+- RUL target capping
+- NASA test-set evaluation
+- Dashboard maintenance thresholds
+
+---
+
+## Limitations
+
+This is a benchmark-based portfolio project rather than a production maintenance system.
+
+Important limitations include:
+
+- NASA CMAPSS is simulated benchmark data, not live industrial sensor data.
+- The model assumes the incoming sensor schema is compatible with the training data.
+- Dashboard health thresholds are decision bands, not failure probabilities.
+- The final RUL cap was informed by benchmark experimentation involving the public test labels.
+
+For a production system, I would additionally introduce stronger data validation, model monitoring, uncertainty estimation, drift detection, retraining policies, and business-specific maintenance costs.
+
+---
+
+## Tech Stack
+
+**Python · Pandas · NumPy · Scikit-learn · XGBoost · Optuna · SHAP · Matplotlib · Seaborn · Plotly · Streamlit · PyYAML · Pytest**
+
+---
+
+## Takeaway
+
+This project was built to demonstrate the complete lifecycle of a machine learning solution rather than only model training:
+
+```text
+Data
+  ↓
+Feature Engineering
+  ↓
+Validation
+  ↓
+Model Comparison
+  ↓
+Hyperparameter Tuning
+  ↓
+Interpretability
+  ↓
+Unseen-Test Evaluation
+  ↓
+Inference
+  ↓
+Dashboard
+```
+
+The main focus was not just achieving a good metric, but building a pipeline that is **reproducible, explainable, testable and usable**.

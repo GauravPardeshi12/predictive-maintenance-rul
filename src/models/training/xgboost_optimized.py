@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import pandas as pd
-
 from xgboost import XGBRegressor
 
-from src.utils.logger import logger
+from src.utils.config import config
 
 
 def train_optimized_xgboost(
@@ -12,45 +11,14 @@ def train_optimized_xgboost(
     y_train: pd.Series,
     best_params: dict,
 ) -> XGBRegressor:
-    """
-    Train the final XGBoost model using the hyperparameters
-    selected by Optuna.
-
-    Parameters
-    ----------
-    x_train : pd.DataFrame
-        Complete training feature matrix.
-
-    y_train : pd.Series
-        Complete training target values.
-
-    best_params : dict
-        Best hyperparameters returned by Optuna.
-
-    Returns
-    -------
-    XGBRegressor
-        Final trained XGBoost model.
-    """
-
-    logger.info(
-        "Training optimized XGBoost model."
-    )
-
+    """Train the final XGBoost model with a capped RUL target."""
     model = XGBRegressor(
         **best_params,
         objective="reg:squarederror",
-        random_state=42,
+        random_state=config["project"]["random_seed"],
         n_jobs=-1,
     )
 
-    model.fit(
-        x_train,
-        y_train,
-    )
-
-    logger.info(
-        "Optimized XGBoost training completed."
-    )
-
+    rul_cap = config["training"]["rul_cap"]
+    model.fit(x_train, y_train.clip(upper=rul_cap))
     return model

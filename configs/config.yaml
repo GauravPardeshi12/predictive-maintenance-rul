@@ -1,61 +1,29 @@
-# ====================================================
-# Project Configuration
-# =====================================================
-
 project:
   name: Predictive-Maintenance-RUL
   random_seed: 42
 
-# =====================================================
-# Paths
-# ====================================================
-
 paths:
   raw_data: data/raw
-  interim_data: data/interim
-  processed_data: data/processed
-  external_data: data/external
-
   models: models
   reports: reports
   metrics: reports/metrics
   figures: reports/figures
+  predictions: reports/predictions
   logs: logs
-
-# =====================================================
-# Dataset
-# =====================================================
 
 dataset:
   num_sensors: 21
 
-  dataset_files:
-    - train_FD001.txt
-    - train_FD002.txt
-    - train_FD003.txt
-    - train_FD004.txt
-
-# =====================================================
-# Feature Engineering
-# =====================================================
-
 feature_engineering:
   rolling_window: 3
 
-# =====================================================
-# Training
-# =====================================================
-
 training:
-  train_size: 0.8
   test_size: 0.2
-
-# =====================================================
-# Model
-# =====================================================
+  rul_cap: 125
+  optuna_trials: 5
 
 model:
-  name: random_forest
+  name: optimized_xgboost
 
 random_forest:
   n_estimators: 200
@@ -71,3 +39,6 @@ xgboost:
   colsample_bytree: 0.8
   verbosity: 0
 
+risk:
+  critical_max_rul: 30
+  warning_max_rul: 60

@@ -1,165 +1,79 @@
-import pandas as pd
+from __future__ import annotations
+
 from pathlib import Path
-from src.utils.logger import logger
+
+import pandas as pd
+
 from src.utils.config import config
+from src.utils.logger import logger
 
 
 NUM_SENSORS = config["dataset"]["num_sensors"]
 RAW_DATA_DIR = Path(config["paths"]["raw_data"])
+BASE_COLUMNS = ["unit_id", "cycle", "setting_1", "setting_2", "setting_3"]
+SENSOR_COLUMNS = [f"sensor_{i}" for i in range(1, NUM_SENSORS + 1)]
+COLUMN_NAMES = BASE_COLUMNS + SENSOR_COLUMNS
+
 
 def load_single_dataset(file_path: Path) -> pd.DataFrame:
-    """
-    Load single NASA CMAPSS training dataset
-
-    Parameters
-    -----------
-    file_path: Path
-        Path to the dataset file
-
-    Return
-    ----------
-    pd.DataFrame
-        Loaded Dataset with proper column names.
-    """
-
-    logger.info(f"Loading Dataset {file_path.name}")
+    """Load one NASA CMAPSS train or test file."""
+    logger.info(f"Loading dataset {file_path.name}")
 
     if not file_path.exists():
-        logger.error("File Not Found")
-        raise FileNotFoundError("File Not Found")
-
-    base_columns = ["unit_id", "cycle", "setting_1", "setting_2", "setting_3"]
-    sensor_columns = [f"sensor_{i}" for i in range(1, NUM_SENSORS + 1)]
-
-    column_names = base_columns + sensor_columns
+        raise FileNotFoundError(f"Dataset file not found: {file_path}")
 
     df = pd.read_csv(
-        file_path, 
-        sep=r"\s+", 
-        header= None , 
-        names=column_names, 
-        usecols=column_names)
+        file_path,
+        sep=r"\s+",
+        header=None,
+        names=COLUMN_NAMES,
+        usecols=COLUMN_NAMES,
+    )
     df["dataset_id"] = file_path.stem.split("_")[1]
 
-    logger.info(f"Successfully loaded {file_path.name}")
-
+    logger.info(f"Loaded {len(df):,} rows from {file_path.name}")
     return df
 
 
 def calculate_rul(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Calculate the Remaining Useful Life (RUL) for each engine
+    """Calculate RUL from the last observed cycle of each engine."""
+    logger.info("Calculating RUL.")
 
-    Parameters
-    -----------
-    df: pd.DataFrame
-        Input Dataset containing engine cycles
+    df = df.copy()
+    max_cycle = df.groupby(["dataset_id", "unit_id"])["cycle"].transform("max")
+    df["RUL"] = max_cycle - df["cycle"]
 
-    Returns
-    -----------
-    df: pd.DataFrame
-        Dataset with an additional RUL column
-    """
-
-    logger.info("Calculating the Remaining Useful Life (RUL).")
-    max_cycles = (
-        df.groupby(["dataset_id", "unit_id"])["cycle"]
-        .max()
-        .reset_index()
-        .rename(columns={"cycle": "max_cycle"})
-    )
-
-    df = df.merge(max_cycles, on=["dataset_id","unit_id"], how="left")
-    df["RUL"] = df["max_cycle"] - df["cycle"]
-    df = df.drop(columns=["max_cycle"])
-
-    logger.info(f"RUL Calculated Successfully for the {len(df):,} Records")
-
+    logger.info(f"RUL calculated for {len(df):,} rows")
     return df
 
 
+def _load_files(pattern: str) -> pd.DataFrame:
+    files = sorted(RAW_DATA_DIR.glob(pattern))
+
+    if not files:
+        raise FileNotFoundError(f"No files matching '{pattern}' found in {RAW_DATA_DIR}")
+
+    datasets = [load_single_dataset(path) for path in files]
+    combined = pd.concat(datasets, ignore_index=True)
+
+    logger.info(f"Combined {len(datasets)} datasets with final shape {combined.shape}")
+    return combined
+
+
 def load_training_data() -> pd.DataFrame:
-    """
-    Load all NASA CMAPSS datasets and calculate RUL.
+    """Load all NASA CMAPSS training datasets and calculate RUL."""
+    return calculate_rul(_load_files("train_*.txt"))
 
-    Returns
-    ----------
-    pd.DataFrame
-        combined training dataset with RUL
-    """
-
-    logger.info("Loading all training datasets.")
-
-
-    dataset_files = sorted(RAW_DATA_DIR.glob("train_*.txt"))
-
-    if not dataset_files:
-        logger.error("No training dataset found")
-        raise FileNotFoundError(f"No training datasets found in {RAW_DATA_DIR}")
-    
-    datasets = []
-    for file_path in dataset_files:
-        dataset = load_single_dataset(Path(file_path))
-        datasets.append(dataset)
-
-    combined_df = pd.concat(datasets, ignore_index= True )
-
-    logger.info(f"Successfully Combined {len(datasets)} datasets.")
-    combined_df = calculate_rul(combined_df)
-
-    return combined_df
 
 def load_test_data() -> pd.DataFrame:
-    """
-    Load all NASA CMAPSS test datasets.
-
-    Returns
-    -------
-    pd.DataFrame
-        Combined test dataset without RUL values.
-    """
-
-    logger.info("Loading all test datasets.")
-
-    dataset_files = sorted(
-        RAW_DATA_DIR.glob("test_*.txt")
-    )
-
-    if not dataset_files:
-        logger.error("No test datasets found.")
-        raise FileNotFoundError(
-            f"No test datasets found in {RAW_DATA_DIR}"
-        )
-
-    datasets = []
-
-    for file_path in dataset_files:
-        dataset = load_single_dataset(file_path)
-        datasets.append(dataset)
-
-    combined_df = pd.concat(
-        datasets,
-        ignore_index=True,
-    )
-
-    logger.info(
-        f"Successfully combined {len(datasets)} test datasets."
-    )
-
-    logger.info(
-        f"Final test dataset shape: {combined_df.shape}"
-    )
-
-    return combined_df
+    """Load and combine all NASA CMAPSS test datasets."""
+    return _load_files("test_*.txt")
 
 
 def main() -> None:
-    """
-    Run the data ingestion pipeline.
-    """
     df = load_training_data()
+    logger.info(f"Final training dataset shape: {df.shape}")
 
-    logger.info(f"Final dataset shape: {df.shape}")
 
 if __name__ == "__main__":
     main()

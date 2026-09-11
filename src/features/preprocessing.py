@@ -1,60 +1,29 @@
 from __future__ import annotations
+
 import pandas as pd
-from src.utils.logger import logger
 from sklearn.model_selection import train_test_split
+
+from src.utils.logger import logger
+
 
 IDENTIFIER_COLUMNS = ["unit_id", "dataset_id", "engine_id", "operating_condition"]
 
 
 def create_engine_identifier(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Create a globally unique engine identifier by combining dataset_id and unit_id.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataset.
-
-    Returns
-    -------
-    pd.DataFrame
-        Dataset with an additional engine_id column.
-    """
-    logger.info("Creating unique engine identifier.")
-
+    """Create a unique engine identifier across all CMAPSS datasets."""
+    df = df.copy()
     df["engine_id"] = df["dataset_id"] + "_" + df["unit_id"].astype(str)
-
-    logger.info(
-        f"Created engine identifiers for " f"{df['engine_id'].nunique()} engines."
-    )
-
+    logger.info(f"Created identifiers for {df['engine_id'].nunique()} engines")
     return df
 
 
 def select_features_and_target(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
-    """
-    Split the dataset into features and target.
+    """Separate model features from the RUL target."""
+    if "RUL" not in df.columns:
+        raise ValueError("RUL column is required for training")
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-
-    Returns
-    -------
-    X : pd.DataFrame
-
-    y : pd.Series
-    """
-
-    logger.info("Seperating features and target.")
-
-    x = df.drop(columns=["RUL"])
-
+    x = df.drop(columns="RUL")
     y = df["RUL"]
-
-    logger.info(f"Feature matrix shape: {x.shape}")
-    logger.info(f"Target vector shape: {y.shape}")
-
     return x, y
 
 
@@ -63,56 +32,23 @@ def split_by_engine(
     y: pd.Series,
     test_size: float = 0.2,
     random_state: int = 42,
-) -> tuple[
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.Series,
-    pd.Series,
-]:
-
-    logger.info(
-        "Performing dataset-stratified engine-wise train/test split."
-    )
-
-    required_columns = {
-        "dataset_id",
-        "engine_id",
-    }
-
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    """Split engines within each dataset so rows from one engine never cross sets."""
+    required_columns = {"dataset_id", "engine_id"}
     missing = required_columns - set(x.columns)
-
     if missing:
-        raise ValueError(
-            f"Missing required columns: {sorted(missing)}"
-        )
+        raise ValueError(f"Missing required columns: {sorted(missing)}")
 
-    train_indices = []
-    test_indices = []
+    train_indices: list[int] = []
+    test_indices: list[int] = []
 
-    datasets = sorted(
-        x["dataset_id"].unique()
-    )
-
-    print("\n")
-    print("=" * 70)
+    print("\n" + "=" * 70)
     print("TRAIN / TEST SPLIT SUMMARY")
     print("=" * 70)
 
-    for dataset in datasets:
-
-        logger.info(
-            f"Processing dataset {dataset}"
-        )
-
-        dataset_x = x[
-            x["dataset_id"] == dataset
-        ]
-
-        engine_ids = (
-            dataset_x["engine_id"]
-            .drop_duplicates()
-            .to_numpy()
-        )
+    for dataset_id in sorted(x["dataset_id"].unique()):
+        dataset_x = x[x["dataset_id"] == dataset_id]
+        engine_ids = dataset_x["engine_id"].drop_duplicates().to_numpy()
 
         train_engines, test_engines = train_test_split(
             engine_ids,
@@ -121,83 +57,28 @@ def split_by_engine(
             shuffle=True,
         )
 
-        train_idx = dataset_x[
-            dataset_x["engine_id"].isin(train_engines)
-        ].index
+        train_idx = dataset_x.index[dataset_x["engine_id"].isin(train_engines)]
+        test_idx = dataset_x.index[dataset_x["engine_id"].isin(test_engines)]
 
-        test_idx = dataset_x[
-            dataset_x["engine_id"].isin(test_engines)
-        ].index
+        train_indices.extend(train_idx.tolist())
+        test_indices.extend(test_idx.tolist())
 
-        train_indices.extend(
-            train_idx.tolist()
-        )
+        print(f"\n{dataset_id}")
+        print(f"Train Engines : {len(train_engines)}")
+        print(f"Test Engines  : {len(test_engines)}")
+        print(f"Train Samples : {len(train_idx):,}")
+        print(f"Test Samples  : {len(test_idx):,}")
 
-        test_indices.extend(
-            test_idx.tolist()
-        )
-
-        print(f"\n{dataset}")
-        print("-" * 35)
-        print(
-            f"Train Engines : {len(train_engines)}"
-        )
-        print(
-            f"Test Engines  : {len(test_engines)}"
-        )
-        print(
-            f"Train Samples : {len(train_idx):,}"
-        )
-        print(
-            f"Test Samples  : {len(test_idx):,}"
-        )
-
-    x_train = x.loc[
-        train_indices
-    ].copy()
-
-    x_test = x.loc[
-        test_indices
-    ].copy()
-
-    y_train = y.loc[
-        train_indices
-    ].copy()
-
-    y_test = y.loc[
-        test_indices
-    ].copy()
-
-    logger.info("=" * 70)
+    x_train = x.loc[train_indices].copy()
+    x_test = x.loc[test_indices].copy()
+    y_train = y.loc[train_indices].copy()
+    y_test = y.loc[test_indices].copy()
 
     logger.info(
-        f"Training Engines : "
-        f"{x_train['engine_id'].nunique()}"
+        f"Split complete: {x_train['engine_id'].nunique()} train engines, "
+        f"{x_test['engine_id'].nunique()} test engines"
     )
-
-    logger.info(
-        f"Testing Engines : "
-        f"{x_test['engine_id'].nunique()}"
-    )
-
-    logger.info(
-        f"Training Samples : "
-        f"{len(x_train):,}"
-    )
-
-    logger.info(
-        f"Testing Samples : "
-        f"{len(x_test):,}"
-    )
-
-    logger.info("=" * 70)
-
-    return (
-        x_train,
-        x_test,
-        y_train,
-        y_test,
-    )
+    return x_train, x_test, y_train, y_test
 
 
 def remove_identifier_columns(
@@ -205,102 +86,27 @@ def remove_identifier_columns(
     x_test: pd.DataFrame,
     include_cycle: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Remove identifier columns from the training and testing
-    feature matrices.
-
-    Parameters
-    ----------
-    x_train : pd.DataFrame
-        Training feature matrix.
-
-    x_test : pd.DataFrame
-        Testing feature matrix.
-
-    include_cycle : bool, default=False
-        Whether to keep the cycle feature.
-
-    Returns
-    -------
-    tuple
-        X_train and X_test after removing unwanted columns.
-    """
-
-    logger.info("Removing identifier columns.")
-
+    """Remove identifiers and optionally remove cycle for the ablation experiment."""
     columns_to_remove = [
-        column
-        for column in IDENTIFIER_COLUMNS
-        if column in x_train.columns
+        column for column in IDENTIFIER_COLUMNS if column in x_train.columns
     ]
 
     if not include_cycle and "cycle" in x_train.columns:
         columns_to_remove.append("cycle")
 
-    x_train = x_train.drop(
-        columns=columns_to_remove
-    )
+    x_train = x_train.drop(columns=columns_to_remove)
+    x_test = x_test.drop(columns=columns_to_remove)
 
-    x_test = x_test.drop(
-        columns=columns_to_remove
-    )
-
-    logger.info(
-        f"Removed {len(columns_to_remove)} column(s): "
-        f"{', '.join(columns_to_remove)}"
-    )
-
-    logger.info(
-        f"Training feature shape : {x_train.shape}"
-    )
-
-    logger.info(
-        f"Testing feature shape  : {x_test.shape}"
-    )
-
-    return (
-        x_train,
-        x_test,
-    )
+    logger.info(f"Removed columns: {', '.join(columns_to_remove)}")
+    return x_train, x_test
 
 
 def prepare_training_data(
     df: pd.DataFrame,
     include_cycle: bool = False,
-) -> tuple[
-    pd.DataFrame,
-    pd.DataFrame,
-    pd.Series,
-    pd.Series,
-    pd.Series,
-]:
-    """
-    Execute the complete preprocessing pipeline for model training.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Feature engineered dataset.
-
-    include_cycle : bool, default=False
-        Whether to keep cycle as a model feature.
-
-    Returns
-    -------
-    tuple
-        X_train,
-        X_test,
-        y_train,
-        y_test,
-        train_groups
-    """
-
-    logger.info("=" * 70)
-    logger.info("Starting preprocessing pipeline.")
-    logger.info("=" * 70)
-
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.Series]:
+    """Run engine grouping, train/test splitting and final feature selection."""
     df = create_engine_identifier(df)
-
     x, y = select_features_and_target(df)
 
     x_train, x_test, y_train, y_test = split_by_engine(
@@ -309,21 +115,13 @@ def prepare_training_data(
     )
 
     train_groups = x_train["engine_id"].copy()
-
     x_train, x_test = remove_identifier_columns(
-        x_train=x_train,
-        x_test=x_test,
+        x_train,
+        x_test,
         include_cycle=include_cycle,
     )
 
-    logger.info("=" * 70)
-    logger.info("Preprocessing pipeline completed successfully.")
-    logger.info("=" * 70)
-
-    return (
-        x_train,
-        x_test,
-        y_train,
-        y_test,
-        train_groups,
+    logger.info(
+        f"Training features: {x_train.shape}; test features: {x_test.shape}"
     )
+    return x_train, x_test, y_train, y_test, train_groups

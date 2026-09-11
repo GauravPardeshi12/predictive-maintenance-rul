@@ -1,37 +1,24 @@
-"""
-Central logging configuration for the project.
-"""
+from __future__ import annotations
 
 import logging
 from pathlib import Path
 
+from src.utils.config import config
+
+
 def setup_logger(log_file: str = "project.log") -> logging.Logger:
-    """"
-    Configure and return a project logger
-
-    Parameters
-    -----------------
-    log_file: str
-    Name of the log file
-
-    Return
-    -----------------
-    logging.Logger
-    """
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    """Create the shared project logger."""
+    log_dir = Path(config["paths"]["logs"])
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     logger = logging.getLogger("PredictiveMaintenance")
-
-    if logger.hasHandlers():
+    if logger.handlers:
         return logger
-    
-    logger.setLevel(logging.INFO)
 
+    logger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     file_handler = logging.FileHandler(log_dir / log_file)
-
     console_handler = logging.StreamHandler()
 
     file_handler.setFormatter(formatter)
@@ -39,7 +26,7 @@ def setup_logger(log_file: str = "project.log") -> logging.Logger:
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
     return logger
+
 
 logger = setup_logger()

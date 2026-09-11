@@ -1,30 +1,26 @@
+from __future__ import annotations
+
 from pathlib import Path
+
 import yaml
-from src.utils.logger import logger
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CONFIG_PATH = PROJECT_ROOT / "configs" / "config.yaml"
 
 
 def load_config() -> dict:
-    """
-    Load project configuration from config.yaml.
+    """Load project configuration from config.yaml."""
+    if not CONFIG_PATH.exists():
+        raise FileNotFoundError(f"Configuration file not found: {CONFIG_PATH}")
 
-    Returns
-    --------
-    dict
-        Project configuration.
-    """
-    config_path = Path("configs/config.yaml")
-
-    logger.info("Loading project configuration.")
-
-    if not config_path.exists():
-        logger.error("Configuration file not found.")
-        raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    
-    with open(config_path, "r" , encoding= "utf-8") as file:
+    with CONFIG_PATH.open("r", encoding="utf-8") as file:
         config = yaml.safe_load(file)
+
+    for name, path in config.get("paths", {}).items():
+        config["paths"][name] = str(PROJECT_ROOT / path)
 
     return config
 
-config = load_config()
 
-    
+config = load_config()

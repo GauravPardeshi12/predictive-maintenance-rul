@@ -1,5 +1,5 @@
 Model,MAE,RMSE,R2_Score
-Optimized XGBoost,32.703,46.086,0.671
-XGBoost,32.274,46.215,0.669
+XGBoost,32.255,46.167,0.669
 Random Forest,32.377,46.356,0.667
 Linear Regression,38.244,50.175,0.609
+Optimized XGBoost,39.509,63.022,0.384
