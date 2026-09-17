@@ -208,7 +208,9 @@ Model performance alone does not explain **why** a prediction was made.
 
 SHAP is used to examine how individual features influence predicted RUL.
 
-![SHAP Summary](docs/images/shap_summary.png)
+<p align="center">
+  <img src="docs/images/shap_summary.png" alt="SHAP Summary" width="650">
+</p>
 
 The analysis identifies features such as `cycle`, `sensor_13`, `sensor_13_lag1`, `sensor_15`, and their temporal variants as important contributors to model output.
 
