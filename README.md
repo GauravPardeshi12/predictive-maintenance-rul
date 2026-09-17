@@ -118,7 +118,6 @@ Compares predicted RUL behaviour across the four CMAPSS subsets.
 
 **[Live Dashboard →](https://predictive-maintenance-rul-nasa-cmapss.streamlit.app/)**
 
-> Replace `YOUR_STREAMLIT_URL` with the deployed Streamlit application URL.
 
 ---
 
@@ -209,7 +208,7 @@ Model performance alone does not explain **why** a prediction was made.
 
 SHAP is used to examine how individual features influence predicted RUL.
 
-![SHAP Summary](docs/images/shap_summary.jpg)
+![SHAP Summary](docs/images/shap_summary.png)
 
 The analysis identifies features such as `cycle`, `sensor_13`, `sensor_13_lag1`, `sensor_15`, and their temporal variants as important contributors to model output.
 
@@ -225,7 +224,7 @@ This makes the model analysis more interpretable:
 
 The project also investigates sensor behaviour across engine lifetimes to understand degradation patterns before modelling.
 
-![Sensor Degradation](docs/images/sensor_degradation.jpg)
+![Sensor Degradation](docs/images/sensor_degradation.png)
 
 ---
 
@@ -255,7 +254,7 @@ The final pipeline uses all four NASA CMAPSS subsets:
 
 Evaluating the subsets independently provides a clearer view of model behaviour across different operating conditions and fault scenarios.
 
-![Dataset Performance](docs/images/dataset_performance.jpg)
+![Dataset Performance](docs/images/dataset_performance.png)
 
 ---
 
