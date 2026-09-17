@@ -10,6 +10,7 @@ from src.utils.logger import logger
 
 
 MODEL_DIR = Path(config["paths"]["models"])
+REPORTS_DIR = Path(config["paths"]["reports"])
 
 
 def save_model(model, model_name: str) -> Path:
@@ -32,9 +33,14 @@ def save_scaler(scaler, model_name: str) -> Path:
 
 def save_model_parameters(parameters: dict, model_name: str) -> Path:
     """Save the selected model parameters as JSON."""
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    path = MODEL_DIR / f"{model_name}_parameters.json"
+
+    parameters_dir = REPORTS_DIR / "model_parameters"
+    parameters_dir.mkdir(parents=True, exist_ok=True)
+
+    path = parameters_dir / f"{model_name}_parameters.json"
+
     with path.open("w", encoding="utf-8") as file:
         json.dump(parameters, file, indent=2)
+
     logger.info(f"Saved model parameters to {path}")
     return path
